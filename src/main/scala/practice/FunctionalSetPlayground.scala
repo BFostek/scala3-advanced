@@ -30,7 +30,9 @@ case class Empty[A]() extends FSet[A]{
 case class Cons[A](head: A, tail: FSet[A]) extends FSet[A]{
   def contains(elem: A): Boolean = elem == head || tail.contains(elem)
 
-  infix def +(elem: A): FSet[A] = Cons(elem, this)
+  infix def +(elem: A): FSet[A] = 
+    if (contains(elem)) this
+    else Cons(elem, this)
   infix def ++(anotherSet: FSet[A]): FSet[A] = tail ++ anotherSet + head
   
   def map[B](f: A => B): FSet[B]= tail.map(f) + f(head)
