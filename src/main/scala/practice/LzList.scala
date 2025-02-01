@@ -8,7 +8,7 @@ abstract class LzList[A] {
 
   // utilities
   def #::(element: A): LzList[A] // prepending
-  def ++(another: LzList[A]): LzList[A] // TODO warning
+  infix def ++(another: => LzList[A]): LzList[A] 
 
   // classics
   //
@@ -36,7 +36,7 @@ case class LzEmpty[A]() extends LzList[A] {
 
   // utilities
   def #::(element: A): LzList[A] = new LzCons(element, this)
-  def ++(another: LzList[A]): LzList[A] = another
+  infix def ++(another: => LzList[A]): LzList[A] = another
 
   // classics
   //
@@ -60,40 +60,57 @@ class LzCons[A](hd: => A, tl: => LzList[A]) extends LzList[A] {
 
   // utilities
   def #::(element: A): LzList[A] = new LzCons(element, this)
-  def ++(another: LzList[A]): LzList[A] = new LzCons(head, tail ++ another)
+  infix def ++(another: => LzList[A]): LzList[A] = new LzCons(head, tail ++ another)
 
   // classics
   //
   def forearch(f: A => Unit): Unit = {
-    f(head)
-    tail.forearch(f)
+    @tailrec
+    def foreachTailRec(list: LzList[A]): Unit =
+      if (list.isEmpty) ()
+      else {
+        f(list.head)
+        foreachTailRec(list.tail)
+      }
+    foreachTailRec(this)
   }
 
   def map[B](f: A => B): LzList[B] = new LzCons(f(head), tail.map(f))
-  def flatMap[B](f: A => LzList[B]): LzList[B] = f(head) ++ tail.flatMap(f)
-  def filter(predicate: A => Boolean): LzList[A] = 
-    if(predicate(head)) new LzCons(head,tail.filter(predicate))
+  def flatMap[B](f: A => LzList[B]): LzList[B] =
+    f(head) ++ tail.flatMap(f)
+  def filter(predicate: A => Boolean): LzList[A] =
+    if (predicate(head)) new LzCons(head, tail.filter(predicate))
     else tail.filter(predicate) // TODO warning
 
-  def take(n: Int): LzList[A] = 
-    if(n <= 0) LzEmpty()
-    else if (n == 1) new LzCons(head,LzEmpty())
-    else new LzCons(head,tail.take(n-1)) // preservers lazy eval
+  def take(n: Int): LzList[A] =
+    if (n <= 0) LzEmpty()
+    else if (n == 1) new LzCons(head, LzEmpty())
+    else new LzCons(head, tail.take(n - 1)) // preservers lazy eval
 
 }
 
 object LzList {
   def empty[A]: LzList[A] = LzEmpty()
-  def generate[A](start: A)(generator: A => A): LzList[A] = 
+  def generate[A](start: A)(generator: A => A): LzList[A] =
     new LzCons(start, LzList.generate(generator(start))(generator))
-  def from[A](list: List[A]): LzList[A] = list.foldLeft(LzList.empty){
+  def from[A](list: List[A]): LzList[A] = list.reverse.foldLeft(LzList.empty) {
     (currentList, newElement) =>
       new LzCons(newElement, currentList)
   }
+  def apply[A](values: A*) = LzList.from(values.toList)
 }
 
 object LzListPlayground {
   def main(args: Array[String]): Unit = {
     val naturals = LzList.generate(1)(n => n + 1) // infinite list of naturals
+    //  println(naturals.take(10).forearch(x=>println(x)))
+    val first500k = naturals.take(500000)
+    val first500kList = first500k.toList
+// print(first500kList)
+    println(naturals.map(_ * 2).takeAsList(100))
+    println(naturals.flatMap(x => LzList(x, x + 1)).takeAsList(100))
+    print(naturals.filter(_ < 10).takeAsList(9))
+//    print(naturals.filter(_ < 10).takeAsList(10)) // SO error
+
   }
 }
